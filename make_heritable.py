@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import os
 import shutil
 import sys
@@ -11,6 +9,12 @@ def error(msg):
 
 def warn(msg):
     print(f"[WARNING] {msg}", file=sys.stderr)
+
+def get_real_home():
+    sudo_user = os.environ.get("SUDO_USER")
+    if sudo_user:
+        return Path(f"/home/{sudo_user}")
+    return Path.home()
 
 def copy_to_skel(src: Path, dest: Path):
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -29,7 +33,7 @@ def copy_to_skel(src: Path, dest: Path):
         warn(f"Copy failed for {src}: {e}")
 
 def do_firefox():
-    mozilla = Path.home() / ".mozilla" / "firefox"
+    mozilla = get_real_home() / ".mozilla" / "firefox"
     profiles_ini = mozilla / "profiles.ini"
     if not profiles_ini.exists():
         error("profiles.ini not found. Has Firefox run yet?")
