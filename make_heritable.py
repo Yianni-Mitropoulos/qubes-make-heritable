@@ -11,41 +11,44 @@ def error(msg):
 
 def main():
     if len(sys.argv) != 2:
-        error("Usage: qubes_skel_copy.py <relative-path-from-home>")
+        error("Usage: make-heritable <file-or-directory-relative-to-cwd>")
 
-    rel_path = sys.argv[1]
-    if rel_path.startswith('/') or '..' in rel_path:
-        error("Please provide a safe, relative path from your home directory (no leading / or ..)")
+    input_path = Path(sys.argv[1]).expanduser()
+    abs_src = input_path.resolve()
 
-    home = Path.home()
-    src = home / rel_path
-    dest = Path('/etc/skel') / rel_path
+    cwd = Path.cwd().resolve()
+    try:
+        rel_path = abs_src.relative_to(cwd)
+    except ValueError:
+        error(f"The path {abs_src} is not under the current working directory {cwd}")
 
-    if not src.exists():
-        error(f"Source path does not exist: {src}")
+    dest_path = Path('/etc/skel') / rel_path
 
-    print(f"Copying: {src} → {dest}")
+    if not abs_src.exists():
+        error(f"Source path does not exist: {abs_src}")
 
-    # Ensure parent directories exist in /etc/skel
-    dest.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Copying: {abs_src} → {dest_path}")
 
-    # Remove destination if it already exists
-    if dest.exists():
-        if dest.is_dir():
-            shutil.rmtree(dest)
+    # Ensure destination parent directory exists
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Remove existing destination if needed
+    if dest_path.exists():
+        if dest_path.is_dir():
+            shutil.rmtree(dest_path)
         else:
-            dest.unlink()
+            dest_path.unlink()
 
     try:
-        if src.is_dir():
-            shutil.copytree(src, dest)
+        if abs_src.is_dir():
+            shutil.copytree(abs_src, dest_path)
         else:
-            shutil.copy2(src, dest)
-        print("✅ Copy completed successfully.")
+            shutil.copy2(abs_src, dest_path)
+        print("✅ Successfully copied to /etc/skel/")
     except Exception as e:
-        error(f"Failed to copy: {e}")
+        error(f"Copy failed: {e}")
 
-    print("Note: These changes will be reflected in *new* AppVMs created from this template.")
+    print("ℹ️  This change will apply to newly created AppVMs from this template.")
 
 if __name__ == "__main__":
     main()
